@@ -1,0 +1,26 @@
+# =========================
+# Secrets / config locale
+# =========================
+api/config.php
+
+# =========================
+# Uploads (ne pas versionner)
+# =========================
+uploads/*
+!uploads/.htaccess
+!uploads/.gitkeep
+
+# =========================
+# Logs / cache
+# =========================
+*.log
+.cache/
+tmp/
+
+# =========================
+# OS / IDE
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

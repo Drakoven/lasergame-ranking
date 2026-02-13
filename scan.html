@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soumettre son score</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <button id="themeToggle" class="theme-toggle" type="button" aria-label="Basculer le thème">
+    🌙
+  </button>
+
+  <h1>Classement LaserGame</h1>
+
+  <form id="scoreForm" method="post" enctype="multipart/form-data" novalidate>
+    <label for="email">Email :</label>
+    <input id="email" type="email" name="email" required />
+
+    <label for="partyDateTime">Date de la partie :</label>
+    <input id="partyDateTime" type="datetime-local" name="partyDateTime" required />
+
+    <label for="vestPseudo">Pseudo du Gilet :</label>
+    <input id="vestPseudo" type="text" name="vestPseudo" required />
+
+    <label for="playerPseudo">Pseudo du Joueur :</label>
+    <input
+      id="playerPseudo"
+      type="text"
+      name="playerPseudo"
+      maxlength="20"
+      required
+      placeholder="Ex: Shadow42"
+    />
+
+    <label for="score">Score :</label>
+    <input
+      id="score"
+      type="number"
+      name="score"
+      min="0"
+      required
+      placeholder="12540"
+    />
+
+    <label for="partyCode">Code de la partie (donné par le personnel) :</label>
+    <input
+      id="partyCode"
+      type="text"
+      name="partyCode"
+      required
+      placeholder="Ex: ABC123"
+    />
+
+    <label for="photo">Photo du classement (obligatoire) :</label>
+    <input
+      id="photo"
+      type="file"
+      name="photo"
+      accept="image/jpeg,image/png"
+      required
+    />
+    <img id="photoPreview" alt="Aperçu du classement" />
+    <p id="photoInfo"></p>
+
+    <label class="checkbox">
+      <input id="rules" type="checkbox" name="rules" required />
+      J'accepte le règlement du classement et autorise la vérification de mon score.
+    </label>
+
+    <button id="submitBtn" type="submit">Envoyer</button>
+    <p id="message" aria-live="polite"></p>
+  </form>
+
+  <!-- MODAL RÉCAP -->
+  <div class="modal" id="summaryModal" hidden>
+    <div class="modal__overlay" id="modalOverlay"></div>
+
+    <div class="modal__content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal__header">
+        <h2 id="modalTitle">Récapitulatif de l’envoi</h2>
+        <button class="modal__close" id="modalClose" type="button" aria-label="Fermer">✕</button>
+      </div>
+
+      <div class="summary" id="summaryCard"></div>
+
+      <div class="modal__actions">
+        <button class="modal__ok" id="modalOk" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
