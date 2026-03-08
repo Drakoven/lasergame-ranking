@@ -3,6 +3,13 @@ require __DIR__ . "/auth.php";
 require_admin();
 require __DIR__ . "/../api/config.php";
 
+// Vérif centre en session
+if (empty($_SESSION["center_id"])) {
+  http_response_code(400);
+  exit("Centre manquant en session. Reconnecte-toi.");
+}
+$centerId = (int)$_SESSION["center_id"];
+
 // CSRF token
 if (empty($_SESSION["csrf"])) {
   $_SESSION["csrf"] = bin2hex(random_bytes(16));
@@ -34,7 +41,7 @@ if ($sort === "scoreAsc") $orderBy = "s.score ASC, s.party_datetime DESC";
 if ($sort === "dateDesc") $orderBy = "s.party_datetime DESC, s.score DESC";
 if ($sort === "dateAsc")  $orderBy = "s.party_datetime ASC, s.score DESC";
 
-// Query
+// Query principale : scores DU CENTRE connecté uniquement
 $sql = "
   SELECT
     s.id, s.email, s.party_datetime,
@@ -46,10 +53,15 @@ $sql = "
     a.username AS verified_by_username
   FROM scores s
   LEFT JOIN admins a ON a.id = s.verified_by_admin_id
-  WHERE s.party_datetime >= :start
+  WHERE s.center_id = :center_id
+    AND s.party_datetime >= :start
     AND s.party_datetime < :end
 ";
-$params = [":start" => $start, ":end" => $end];
+$params = [
+  ":center_id" => $centerId,
+  ":start" => $start,
+  ":end" => $end
+];
 
 if ($q !== "") {
   $sql .= " AND (
@@ -76,58 +88,77 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Stats PRO (indépendant du tri)
 // ===============================
 
-// Total du mois (avec filtres actuels ? Ici: total de la liste affichée)
+// Total affiché dans la liste
 $total = count($rows);
 
-// Meilleur score ACCEPTÉ du mois (indépendant du tri)
+// Meilleur score ACCEPTÉ du mois pour CE CENTRE
 $stmtBestApproved = $pdo->prepare("
   SELECT id, score, vest_pseudo, player_pseudo
   FROM scores
-  WHERE party_datetime >= :start
+  WHERE center_id = :center_id
+    AND party_datetime >= :start
     AND party_datetime < :end
     AND status = 1
   ORDER BY score DESC, party_datetime DESC
   LIMIT 1
 ");
-$stmtBestApproved->execute([":start"=>$start, ":end"=>$end]);
+$stmtBestApproved->execute([
+  ":center_id"=>$centerId,
+  ":start"=>$start,
+  ":end"=>$end
+]);
 $bestApproved = $stmtBestApproved->fetch(PDO::FETCH_ASSOC);
 
-// Fallback : meilleur score tout statut (si aucun accepté)
+// Fallback : meilleur score tout statut pour CE CENTRE
 $stmtBestAny = $pdo->prepare("
   SELECT id, score, vest_pseudo, player_pseudo
   FROM scores
-  WHERE party_datetime >= :start
+  WHERE center_id = :center_id
+    AND party_datetime >= :start
     AND party_datetime < :end
   ORDER BY score DESC, party_datetime DESC
   LIMIT 1
 ");
-$stmtBestAny->execute([":start"=>$start, ":end"=>$end]);
+$stmtBestAny->execute([
+  ":center_id"=>$centerId,
+  ":start"=>$start,
+  ":end"=>$end
+]);
 $bestAny = $stmtBestAny->fetch(PDO::FETCH_ASSOC);
 
 $best = $bestApproved ?: $bestAny;
 
-// Dernier envoi (le plus récent created_at)
+// Dernier envoi du mois pour CE CENTRE
 $stmtLast = $pdo->prepare("
   SELECT id, created_at, player_pseudo
   FROM scores
-  WHERE party_datetime >= :start
+  WHERE center_id = :center_id
+    AND party_datetime >= :start
     AND party_datetime < :end
   ORDER BY created_at DESC
   LIMIT 1
 ");
-$stmtLast->execute([":start"=>$start, ":end"=>$end]);
+$stmtLast->execute([
+  ":center_id"=>$centerId,
+  ":start"=>$start,
+  ":end"=>$end
+]);
 $last = $stmtLast->fetch(PDO::FETCH_ASSOC);
 
-
-// pending (en attente sur le mois)
+// Pending (en attente) du mois pour CE CENTRE
 $stmtCount = $pdo->prepare("
   SELECT COUNT(*)
   FROM scores
-  WHERE party_datetime >= :start
+  WHERE center_id = :center_id
+    AND party_datetime >= :start
     AND party_datetime < :end
     AND status = 0
 ");
-$stmtCount->execute([":start"=>$start, ":end"=>$end]);
+$stmtCount->execute([
+  ":center_id"=>$centerId,
+  ":start"=>$start,
+  ":end"=>$end
+]);
 $pendingCount = (int)$stmtCount->fetchColumn();
 ?>
 <!DOCTYPE html>
@@ -301,7 +332,6 @@ $pendingCount = (int)$stmtCount->fetchColumn();
               </td>
 
               <td>
-                <!-- 1 = Accepté, 2 = Rejeté -->
                 <button
                   type="button"
                   class="btn btn--sm js-set-status"
@@ -326,7 +356,6 @@ $pendingCount = (int)$stmtCount->fetchColumn();
   </section>
 </main>
 
-<!-- MODAL PHOTO -->
 <div class="modal" id="photoModal" hidden>
   <div class="modal__overlay" id="photoOverlay"></div>
 

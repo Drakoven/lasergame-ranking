@@ -40,12 +40,16 @@ if (!is_numeric($score) || $scoreVal < 0) {
   exit;
 }
 
-// Vérifie le code de partie
+// Vérifie le code de partie + récupère le center_id
 $now = date("Y-m-d H:i:s");
 $stmt = $pdo->prepare("
-  SELECT id FROM party_codes
-  WHERE code = :c AND valid_from <= :now AND valid_to >= :now
-  ORDER BY id DESC LIMIT 1
+  SELECT id, center_id
+  FROM party_codes
+  WHERE code = :c
+    AND valid_from <= :now
+    AND valid_to >= :now
+  ORDER BY id DESC
+  LIMIT 1
 ");
 $stmt->execute([":c"=>$partyCode, ":now"=>$now]);
 $codeRow = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -55,6 +59,8 @@ if (!$codeRow) {
   echo json_encode(["ok"=>false, "error"=>"Code invalide ou expiré. Demande un code au staff."]);
   exit;
 }
+
+$centerId = (int)$codeRow["center_id"];
 
 // Photo
 if (empty($_FILES["photo"]) || $_FILES["photo"]["error"] !== UPLOAD_ERR_OK) {
@@ -80,7 +86,7 @@ if ($photo["size"] > $maxBytes) {
   exit;
 }
 
-// ✅ Vrai check image (anti fake)
+// Vrai check image (anti fake)
 $imgInfo = @getimagesize($photo["tmp_name"]);
 if ($imgInfo === false) {
   http_response_code(400);
@@ -114,12 +120,14 @@ $photoPath = "/lasergame/uploads/" . $filename;
 
 $stmt = $pdo->prepare("
   INSERT INTO scores (
+    center_id,
     email, party_datetime, vest_pseudo, player_pseudo,
     score, party_code,
     photo_path, photo_mime, photo_size,
     verified, status, created_at
   )
   VALUES (
+    :center_id,
     :email, :pdt, :vp, :pp,
     :score, :pc,
     :path, :mime, :size,
@@ -127,6 +135,7 @@ $stmt = $pdo->prepare("
   )
 ");
 $stmt->execute([
+  ":center_id"=>$centerId,
   ":email"=>$email,
   ":pdt"=>$partyDateTime,
   ":vp"=>$vestPseudo,
@@ -138,5 +147,10 @@ $stmt->execute([
   ":size"=>(int)$photo["size"],
 ]);
 
-echo json_encode(["ok"=>true, "id"=>(int)$pdo->lastInsertId(), "photo_path"=>$photoPath]);
+echo json_encode([
+  "ok"=>true,
+  "id"=>(int)$pdo->lastInsertId(),
+  "center_id"=>$centerId,
+  "photo_path"=>$photoPath
+]);
 exit;

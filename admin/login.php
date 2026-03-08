@@ -9,7 +9,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   $pass = (string)($_POST["password"] ?? "");
 
   $stmt = $pdo->prepare("
-    SELECT id, username, password_hash
+    SELECT id, username, password_hash, center_id
     FROM admins
     WHERE username = :u
     LIMIT 1
@@ -19,9 +19,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   if ($admin && password_verify($pass, $admin["password_hash"])) {
     session_regenerate_id(true);
+
     $_SESSION["is_admin"]   = true;
     $_SESSION["admin_id"]   = (int)$admin["id"];
     $_SESSION["admin_user"] = $admin["username"];
+    $_SESSION["center_id"]  = (int)$admin["center_id"]; // ✅ multi-centre
 
     // CSRF token
     if (empty($_SESSION["csrf"])) {

@@ -14,6 +14,12 @@ if (empty($_SESSION["is_admin"]) || empty($_SESSION["admin_id"])) {
   exit;
 }
 
+if (empty($_SESSION["center_id"])) {
+  http_response_code(400);
+  echo json_encode(["ok"=>false, "error"=>"Centre manquant (reconnecte-toi)."]);
+  exit;
+}
+
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
   http_response_code(405);
   echo json_encode(["ok"=>false, "error"=>"Méthode non autorisée"]);
@@ -39,9 +45,10 @@ if ($id <= 0 || !in_array($status, ["1","2"], true)) {
 
 $st = (int)$status;
 $adminId = (int)$_SESSION["admin_id"];
+$centerId = (int)$_SESSION["center_id"];
 $now = date("Y-m-d H:i:s");
 
-// On met aussi verified pour compat (accepté => verified=1, rejeté => verified=0)
+// Compat temporaire avec l'ancien champ verified
 $verifiedCompat = ($st === 1) ? 1 : 0;
 
 $stmt = $pdo->prepare("
@@ -51,15 +58,28 @@ $stmt = $pdo->prepare("
       verified_at = :va,
       verified_by_admin_id = :aid
   WHERE id = :id
+    AND center_id = :center_id
 ");
 $stmt->execute([
   ":st" => $st,
   ":v"  => $verifiedCompat,
   ":va" => $now,
   ":aid" => $adminId,
-  ":id" => $id
+  ":id" => $id,
+  ":center_id" => $centerId
 ]);
 
-echo json_encode(["ok"=>true, "id"=>$id, "status"=>$st, "verified"=>$verifiedCompat, "verified_at"=>$now]);
+if ($stmt->rowCount() === 0) {
+  http_response_code(404);
+  echo json_encode(["ok"=>false, "error"=>"Score introuvable pour ce centre."]);
+  exit;
+}
 
+echo json_encode([
+  "ok" => true,
+  "id" => $id,
+  "status" => $st,
+  "verified" => $verifiedCompat,
+  "verified_at" => $now
+]);
 exit;

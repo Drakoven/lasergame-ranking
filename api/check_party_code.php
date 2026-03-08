@@ -18,7 +18,7 @@ if ($code === "" || strlen($code) < 3) {
 $now = date("Y-m-d H:i:s");
 
 $stmt = $pdo->prepare("
-  SELECT id, code, valid_from, valid_to
+  SELECT id, center_id, code, valid_from, valid_to
   FROM party_codes
   WHERE code = :c
     AND valid_from <= :now
@@ -34,4 +34,10 @@ if (!$row) {
   exit;
 }
 
-echo json_encode(["ok"=>true, "code"=>$row["code"], "valid_to"=>$row["valid_to"]]);
+echo json_encode([
+  "ok" => true,
+  "code" => $row["code"],
+  "center_id" => (int)$row["center_id"],
+  "valid_to" => $row["valid_to"]
+]);
+exit;
